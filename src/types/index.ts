@@ -16,6 +16,7 @@ export interface ValidationResult {
   registered_address?: string;
   registration_date?: string;
   fraud_risk_score: number;
+  data_source?: "live_vies" | "simulated";
   error?: string;
   checked_at: string;
 }
@@ -31,6 +32,7 @@ export interface BatchResult {
   ref: string;
   valid: boolean;
   fraud_risk_score: number;
+  data_source?: "live_vies" | "simulated";
   error?: string;
   registered?: boolean;
   business_name?: string;

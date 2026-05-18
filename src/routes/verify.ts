@@ -174,7 +174,7 @@ router.get("/:job_id", authMiddleware, async (c) => {
     ...(job.registration_date ? { registration_date: job.registration_date } : {}),
     fraud_risk_score: job.fraud_risk_score,
     ...(job.error ? { error: job.error } : {}),
-    ...(isSimulated ? { data_source: "simulated" } : {}),
+    data_source: isSimulated ? "simulated" : "live_vies",
     checked_at: job.checked_at,
   });
 });

@@ -365,7 +365,7 @@ function buildBatchResponse(
           ? { registered: Boolean(item.registered) }
           : {}),
         ...(item.business_name ? { business_name: item.business_name } : {}),
-        ...(isSimulated ? { data_source: "simulated" } : {}),
+        data_source: isSimulated ? "simulated" : "live_vies",
       };
     }),
   };
