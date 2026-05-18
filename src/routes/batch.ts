@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { z } from "zod";
-import { v4 as uuidv4 } from "uuid";
+import { randomUUID } from "node:crypto";
 import { getDb } from "../db/client.js";
 import { validate, adjustScoreForRegistry } from "../services/tax-id.js";
 import { lookupRegistry, VIES_COUNTRIES } from "../services/registry.js";
@@ -82,6 +82,55 @@ function processRegistryQueue(params: RegistryTaskParams): () => Promise<void> {
   };
 }
 
+interface EnqueueItemParams {
+  batchId: string;
+  item: { ref: string; id: string; country: string; type: TaxIdType };
+  apiKey: ApiKey;
+  queuePriority: number;
+  webhook_url?: string;
+}
+
+function enqueueBatchItem({ batchId, item, apiKey, queuePriority, webhook_url }: EnqueueItemParams): void {
+  const db = getDb();
+  const jobId = randomUUID();
+  const result = validate(item.id, item.country, item.type);
+  const checkedAt = new Date().toISOString();
+
+  db.prepare(
+    `INSERT INTO validation_jobs (job_id, status, valid, tax_id, country, type, format_normalized, fraud_risk_score, error, checked_at, api_key_id)
+     VALUES (?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  ).run(
+    jobId,
+    result.valid ? 1 : 0,
+    item.id,
+    item.country.toUpperCase(),
+    item.type,
+    result.normalized,
+    result.fraud_risk_score,
+    result.error ?? null,
+    checkedAt,
+    apiKey.key_id,
+  );
+
+  db.prepare(
+    "INSERT INTO batch_items (item_id, batch_id, ref, job_id) VALUES (?, ?, ?, ?)",
+  ).run(randomUUID(), batchId, item.ref, jobId);
+
+  void registryQueue.add(
+    processRegistryQueue({
+      jobId,
+      batchId,
+      itemId: item.id,
+      itemCountry: item.country.toUpperCase(),
+      itemType: item.type,
+      baseScore: result.fraud_risk_score,
+      webhook_url,
+      webhookSecret: apiKey.webhook_secret,
+    }),
+    { priority: queuePriority },
+  );
+}
+
 router.post("/", authMiddleware, rateLimitMiddleware, async (c) => {
   const apiKey = c.get("apiKey") as ApiKey;
 
@@ -137,7 +186,7 @@ router.post("/", authMiddleware, rateLimitMiddleware, async (c) => {
     }
   }
 
-  const batchId = uuidv4();
+  const batchId = randomUUID();
   const now = new Date().toISOString();
   const db = getDb();
 
@@ -150,43 +199,7 @@ router.post("/", authMiddleware, rateLimitMiddleware, async (c) => {
   const queuePriority = apiKey.tier === "enterprise" ? 2 : apiKey.tier === "business" ? 1 : 0;
 
   for (const item of items) {
-    const jobId = uuidv4();
-    const result = validate(item.id, item.country, item.type as TaxIdType);
-    const checkedAt = new Date().toISOString();
-
-    db.prepare(
-      `INSERT INTO validation_jobs (job_id, status, valid, tax_id, country, type, format_normalized, fraud_risk_score, error, checked_at, api_key_id)
-       VALUES (?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    ).run(
-      jobId,
-      result.valid ? 1 : 0,
-      item.id,
-      item.country.toUpperCase(),
-      item.type,
-      result.normalized,
-      result.fraud_risk_score,
-      result.error ?? null,
-      checkedAt,
-      apiKey.key_id,
-    );
-
-    db.prepare(
-      "INSERT INTO batch_items (item_id, batch_id, ref, job_id) VALUES (?, ?, ?, ?)",
-    ).run(uuidv4(), batchId, item.ref, jobId);
-
-    void registryQueue.add(
-      processRegistryQueue({
-        jobId,
-        batchId,
-        itemId: item.id,
-        itemCountry: item.country.toUpperCase(),
-        itemType: item.type as TaxIdType,
-        baseScore: result.fraud_risk_score,
-        webhook_url,
-        webhookSecret: apiKey.webhook_secret,
-      }),
-      { priority: queuePriority },
-    );
+    enqueueBatchItem({ batchId, item: item as { ref: string; id: string; country: string; type: TaxIdType }, apiKey, queuePriority, webhook_url });
   }
 
   return c.json({ batch_id: batchId, count: items.length, status: "processing" });
@@ -279,7 +292,7 @@ router.post("/csv", authMiddleware, rateLimitMiddleware, async (c) => {
     items.push({ ref, id, country, type: type as TaxIdType });
   }
 
-  const batchId = uuidv4();
+  const batchId = randomUUID();
   const now = new Date().toISOString();
   const db = getDb();
 
@@ -292,41 +305,7 @@ router.post("/csv", authMiddleware, rateLimitMiddleware, async (c) => {
   const queuePriority = apiKey.tier === "enterprise" ? 2 : apiKey.tier === "business" ? 1 : 0;
 
   for (const item of items) {
-    const jobId = uuidv4();
-    const result = validate(item.id, item.country, item.type);
-    const checkedAt = new Date().toISOString();
-
-    db.prepare(
-      `INSERT INTO validation_jobs (job_id, status, valid, tax_id, country, type, format_normalized, fraud_risk_score, error, checked_at, api_key_id)
-       VALUES (?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    ).run(
-      jobId,
-      result.valid ? 1 : 0,
-      item.id,
-      item.country.toUpperCase(),
-      item.type,
-      result.normalized,
-      result.fraud_risk_score,
-      result.error ?? null,
-      checkedAt,
-      apiKey.key_id,
-    );
-
-    db.prepare(
-      "INSERT INTO batch_items (item_id, batch_id, ref, job_id) VALUES (?, ?, ?, ?)",
-    ).run(uuidv4(), batchId, item.ref, jobId);
-
-    void registryQueue.add(
-      processRegistryQueue({
-        jobId,
-        batchId,
-        itemId: item.id,
-        itemCountry: item.country.toUpperCase(),
-        itemType: item.type,
-        baseScore: result.fraud_risk_score,
-      }),
-      { priority: queuePriority },
-    );
+    enqueueBatchItem({ batchId, item, apiKey, queuePriority });
   }
 
   return c.json({ batch_id: batchId, count: items.length, status: "processing" });

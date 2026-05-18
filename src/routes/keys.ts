@@ -1,7 +1,6 @@
 import { Hono } from "hono";
-import { randomBytes, createHash } from "node:crypto";
+import { randomBytes, createHash, randomUUID } from "node:crypto";
 import { z } from "zod";
-import { v4 as uuidv4 } from "uuid";
 import { getDb } from "../db/client.js";
 import type { ApiKeyTier } from "../types/index.js";
 
@@ -55,10 +54,13 @@ const RegisterSchema = z.object({
 
 router.post("/", async (c) => {
   // IP-based rate limiting: 10 registrations per IP per hour
-  const ip =
-    c.req.header("X-Forwarded-For")?.split(",")[0]?.trim() ??
-    c.req.header("CF-Connecting-IP") ??
-    "127.0.0.1";
+  // TRUSTED_PROXIES controls how many proxy hops to skip from the right of X-Forwarded-For.
+  // Default=0 takes the rightmost IP (safest against client spoofing).
+  const trustedProxies = parseInt(process.env.TRUSTED_PROXIES ?? "0", 10);
+  const xff = c.req.header("X-Forwarded-For");
+  const ip = xff
+    ? (xff.split(",").map((s) => s.trim())[Math.max(0, xff.split(",").length - 1 - trustedProxies)] ?? "127.0.0.1")
+    : (c.req.header("CF-Connecting-IP") ?? "127.0.0.1");
 
   if (!checkRegistrationRateLimit(ip)) {
     return c.json(
@@ -98,7 +100,7 @@ router.post("/", async (c) => {
   const rawKey = randomBytes(32).toString("hex");
   const keyHash = createHash("sha256").update(rawKey).digest("hex");
   const webhookSecret = randomBytes(24).toString("hex");
-  const keyId = uuidv4();
+  const keyId = randomUUID();
   const now = new Date();
   const nextMidnight = new Date(
     Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1),

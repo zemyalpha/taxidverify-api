@@ -1,5 +1,4 @@
-import { createHash, randomBytes } from "node:crypto";
-import { v4 as uuidv4 } from "uuid";
+import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { getDb } from "../src/db/client.js";
 import type { ApiKeyTier } from "../src/types/index.js";
 
@@ -24,10 +23,11 @@ export function createTestKey(tier: ApiKeyTier = "free", overrides?: {
   daily_used?: number;
   reset_at?: string;
   webhook_secret?: string | null;
+  stripe_subscription_id?: string | null;
 }): TestKey {
   const rawKey = randomBytes(32).toString("hex");
   const keyHash = createHash("sha256").update(rawKey).digest("hex");
-  const keyId = uuidv4();
+  const keyId = randomUUID();
   const now = new Date();
   const nextMidnight = new Date(
     Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1),
@@ -35,8 +35,8 @@ export function createTestKey(tier: ApiKeyTier = "free", overrides?: {
 
   const db = getDb();
   db.prepare(
-    `INSERT INTO api_keys (key_id, key_hash, tier, daily_limit, daily_used, reset_at, webhook_secret, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO api_keys (key_id, key_hash, tier, daily_limit, daily_used, reset_at, webhook_secret, stripe_subscription_id, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     keyId,
     keyHash,
@@ -45,6 +45,7 @@ export function createTestKey(tier: ApiKeyTier = "free", overrides?: {
     overrides?.daily_used ?? 0,
     overrides?.reset_at ?? nextMidnight.toISOString(),
     overrides?.webhook_secret ?? randomBytes(24).toString("hex"),
+    overrides?.stripe_subscription_id ?? null,
     now.toISOString(),
   );
 

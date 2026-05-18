@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { z } from "zod";
-import { v4 as uuidv4 } from "uuid";
+import { randomUUID } from "node:crypto";
 import { getDb } from "../db/client.js";
 import { validate, adjustScoreForRegistry } from "../services/tax-id.js";
 import { lookupRegistry, VIES_COUNTRIES } from "../services/registry.js";
@@ -76,7 +76,7 @@ router.post("/", authMiddleware, rateLimitMiddleware, async (c) => {
   }
 
   const result = validate(id, country, type as TaxIdType);
-  const jobId = uuidv4();
+  const jobId = randomUUID();
   const checkedAt = new Date().toISOString();
 
   const db = getDb();

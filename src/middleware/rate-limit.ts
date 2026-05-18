@@ -40,7 +40,7 @@ export async function rateLimitMiddleware(c: Context, next: Next): Promise<Respo
       c.header("X-Overage-Charge", "0.02");
       c.header(
         "X-Usage-Warning",
-        "Daily limit exceeded — overage billed at $0.02/call. Upgrade at /v1/checkout",
+        "Daily limit exceeded - overage billed at $0.02/call. Upgrade at /v1/checkout",
       );
       await next();
       return;
@@ -52,7 +52,8 @@ export async function rateLimitMiddleware(c: Context, next: Next): Promise<Respo
       {
         error: {
           code: "RATE_LIMIT_EXCEEDED",
-          message: "Daily limit exceeded",
+          message: `Daily limit of ${apiKey.daily_limit} calls exceeded. Resets at ${apiKey.reset_at}.`,
+          upgrade_message: `You have used ${apiKey.daily_limit}/${apiKey.daily_limit} of your daily quota. Upgrade at /v1/checkout/pro`,
           upgrade_url: "/v1/checkout",
         },
       },

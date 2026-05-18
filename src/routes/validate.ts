@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { z } from "zod";
-import { v4 as uuidv4 } from "uuid";
+import { randomUUID } from "node:crypto";
 import { getDb } from "../db/client.js";
 import { validate } from "../services/tax-id.js";
 import { authMiddleware } from "../middleware/auth.js";
@@ -41,7 +41,7 @@ router.post("/", authMiddleware, rateLimitMiddleware, async (c) => {
   const apiKey = c.get("apiKey") as ApiKey;
 
   const result = validate(id, country, type as TaxIdType);
-  const jobId = uuidv4();
+  const jobId = randomUUID();
   const checkedAt = new Date().toISOString();
 
   const db = getDb();

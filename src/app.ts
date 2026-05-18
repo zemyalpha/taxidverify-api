@@ -11,6 +11,8 @@ import healthRouter from "./routes/health.js";
 import usageRouter from "./routes/usage.js";
 import checkoutRouter from "./routes/checkout.js";
 import stripeWebhookRouter from "./routes/stripe-webhook.js";
+import metricsRouter from "./routes/metrics.js";
+import { recordRequest } from "./lib/metrics.js";
 
 const logger = pino({ name: "taxidverify", level: process.env.LOG_LEVEL ?? "info" });
 
@@ -21,13 +23,14 @@ export function createApp(): Hono {
   app.use(secureHeaders());
   app.use(cors({ origin: "*", allowMethods: ["GET", "POST", "OPTIONS"] }));
 
-  // Request logging
+  // Request logging and metrics
   app.use(async (c, next) => {
     const requestId = randomUUID();
     const start = Date.now();
     c.set("requestId", requestId);
     await next();
     const latency = Date.now() - start;
+    recordRequest(c.res.status, latency);
     logger.info({
       request_id: requestId,
       method: c.req.method,
@@ -39,6 +42,7 @@ export function createApp(): Hono {
 
   // Routes
   app.route("/health", healthRouter);
+  app.route("/metrics", metricsRouter);
   app.route("/v1/keys", keysRouter);
   app.route("/v1/validate", validateRouter);
   app.route("/v1/verify", verifyRouter);

@@ -41,6 +41,29 @@ router.get("/", authMiddleware, (c) => {
   });
 });
 
+router.get("/overage", authMiddleware, (c) => {
+  const apiKey = c.get("apiKey") as ApiKey;
+  const overageCalls = apiKey.overage_used ?? 0;
+  const overageCostUsd = (overageCalls * 0.02).toFixed(2);
+
+  // Billing period: from previous reset to next reset (24h window)
+  const resetAt = new Date(apiKey.reset_at);
+  const periodStart = new Date(resetAt.getTime() - 24 * 60 * 60 * 1000);
+
+  return c.json({
+    overage_calls: overageCalls,
+    overage_cost_usd: overageCostUsd,
+    rate_per_call_usd: "0.02",
+    billing_period: {
+      start: periodStart.toISOString(),
+      end: resetAt.toISOString(),
+    },
+    ...(overageCalls > 0
+      ? { note: "Overage charges are billed at end of billing period. Upgrade at /v1/checkout to increase your daily limit." }
+      : {}),
+  });
+});
+
 const AlertSchema = z.object({
   threshold_percent: z.number().int().min(50).max(90),
   webhook_url: z.string().url().max(2048),
