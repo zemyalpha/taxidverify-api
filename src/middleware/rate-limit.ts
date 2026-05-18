@@ -16,7 +16,7 @@ export async function rateLimitMiddleware(c: Context, next: Next): Promise<Respo
   // Reset if past reset_at
   if (now >= apiKey.reset_at) {
     const newReset = getNextResetAt();
-    db.prepare("UPDATE api_keys SET daily_used = 0, reset_at = ? WHERE key_id = ?").run(
+    db.prepare("UPDATE api_keys SET daily_used = 0, overage_used = 0, reset_at = ? WHERE key_id = ?").run(
       newReset,
       apiKey.key_id,
     );
@@ -46,6 +46,10 @@ export async function rateLimitMiddleware(c: Context, next: Next): Promise<Respo
       return;
     }
 
+    const currentRow = db
+      .prepare("SELECT daily_used FROM api_keys WHERE key_id = ?")
+      .get(apiKey.key_id) as { daily_used: number };
+    const dailyUsed = currentRow?.daily_used ?? apiKey.daily_limit;
     const resetAt = new Date(apiKey.reset_at);
     const retryAfter = Math.max(1, Math.ceil((resetAt.getTime() - Date.now()) / 1000));
     return c.json(
@@ -53,7 +57,7 @@ export async function rateLimitMiddleware(c: Context, next: Next): Promise<Respo
         error: {
           code: "RATE_LIMIT_EXCEEDED",
           message: `Daily limit of ${apiKey.daily_limit} calls exceeded. Resets at ${apiKey.reset_at}.`,
-          upgrade_message: `You have used ${apiKey.daily_limit}/${apiKey.daily_limit} of your daily quota. Upgrade at /v1/checkout/pro`,
+          upgrade_message: `You have used ${dailyUsed}/${apiKey.daily_limit} of your daily quota. Upgrade at /v1/checkout/pro`,
           upgrade_url: "/v1/checkout",
         },
       },

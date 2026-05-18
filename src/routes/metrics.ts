@@ -5,6 +5,15 @@ import { getMetrics } from "../lib/metrics.js";
 const router = new Hono();
 
 router.get("/", (c) => {
+  const metricsKey = process.env.METRICS_API_KEY;
+  if (!metricsKey) {
+    return c.json({ error: { code: "SERVICE_UNAVAILABLE", message: "METRICS_API_KEY is not configured." } }, 503);
+  }
+  const provided = c.req.header("X-Metrics-Api-Key");
+  if (provided !== metricsKey) {
+    return c.json({ error: { code: "UNAUTHORIZED", message: "Invalid or missing X-Metrics-Api-Key header." } }, 401);
+  }
+
   const db = getDb();
   const m = getMetrics();
 
