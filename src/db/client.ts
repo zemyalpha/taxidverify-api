@@ -115,6 +115,7 @@ function runMigrations(db: Database.Database): void {
       registered_address TEXT,
       registration_date TEXT,
       fraud_risk_score INTEGER NOT NULL DEFAULT 0,
+      data_source TEXT,
       error TEXT,
       webhook_url TEXT,
       webhook_secret TEXT,
@@ -169,4 +170,8 @@ function runMigrations(db: Database.Database): void {
       db.exec(`ALTER TABLE api_keys ADD COLUMN ${col} ${def}`);
     } catch { /* already exists */ }
   }
+
+  try {
+    db.exec("ALTER TABLE validation_jobs ADD COLUMN data_source TEXT");
+  } catch { /* already exists */ }
 }

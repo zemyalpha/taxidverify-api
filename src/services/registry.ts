@@ -3,11 +3,15 @@ import pino from "pino";
 
 const logger = pino({ name: "registry" });
 
-export interface RegistryResult {
+interface RegistryLookupData {
   registered: boolean;
   business_name?: string;
   registered_address?: string;
   registration_date?: string;
+}
+
+export interface RegistryResult extends RegistryLookupData {
+  dataSource: "live_vies" | "simulated";
 }
 
 // EU countries whose VAT numbers are verifiable via VIES SOAP
@@ -40,7 +44,7 @@ function buildViesSoapEnvelope(countryCode: string, vatNumber: string): string {
 </soapenv:Envelope>`;
 }
 
-function parseViesResponse(xml: string): RegistryResult | null {
+function parseViesResponse(xml: string): RegistryLookupData | null {
   // SOAP faults mean the service or member state is unavailable — fall back
   if (/<(?:soap:|soapenv:)?Fault/i.test(xml)) return null;
 
@@ -63,7 +67,7 @@ function parseViesResponse(xml: string): RegistryResult | null {
 async function lookupVies(
   normalizedVat: string,
   country: string,
-): Promise<RegistryResult | null> {
+): Promise<RegistryLookupData | null> {
   // Strip the 2-letter country prefix to get the bare VAT number VIES expects
   const vatNumber = normalizedVat.slice(2);
   const body = buildViesSoapEnvelope(country, vatNumber);
@@ -109,7 +113,7 @@ async function simulatedLookup(id: string, country: string): Promise<RegistryRes
 
   const digits = id.replace(/\D/g, "");
   const seed = digits.split("").reduce((acc, d) => acc + parseInt(d, 10), 0);
-  if (seed % 5 === 0) return { registered: false };
+  if (seed % 5 === 0) return { registered: false, dataSource: "simulated" };
 
   const names: Record<string, string[]> = {
     US: ["Acme Corp", "Global Solutions LLC", "Tech Ventures Inc", "Digital Services Co"],
@@ -136,6 +140,7 @@ async function simulatedLookup(id: string, country: string): Promise<RegistryRes
     business_name: countryNames[seed % countryNames.length],
     registered_address: cities[country] ?? `${country} Business District`,
     registration_date: regDate.toISOString().split("T")[0],
+    dataSource: "simulated",
   };
 }
 
@@ -154,7 +159,7 @@ export async function lookupRegistry(
     const viesResult = await lookupVies(id.toUpperCase().replace(/\s/g, ""), country.toUpperCase());
     if (viesResult !== null) {
       logger.info({ country, id }, "VIES lookup succeeded");
-      return viesResult;
+      return { ...viesResult, dataSource: "live_vies" };
     }
     // VIES unavailable — fall through to simulation
     logger.warn({ country }, "VIES unavailable, using simulation fallback");
