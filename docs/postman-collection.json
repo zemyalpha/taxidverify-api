@@ -1,0 +1,340 @@
+{
+  "info": {
+    "_postman_id": "taxidverify-api-collection",
+    "name": "TaxIDVerify API",
+    "description": "Real-time validation and enrichment of business tax IDs (EIN, VAT, GST, ABN, GSTIN) across 40+ countries.\n\nSet the `baseUrl` variable to your server (default: http://localhost:3000) and `apiKey` to your Bearer token.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3000", "type": "string" },
+    { "key": "apiKey", "value": "", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["health"]
+            },
+            "description": "Liveness and DB connectivity check. No auth required."
+          }
+        }
+      ]
+    },
+    {
+      "name": "API Keys",
+      "item": [
+        {
+          "name": "Create API Key (Free)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"you@example.com\",\n  \"tier\": \"free\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/keys",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "keys"]
+            },
+            "description": "Register a new Free-tier API key. The raw `api_key` is returned once — store it immediately."
+          }
+        },
+        {
+          "name": "Create API Key (Pro)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"you@example.com\",\n  \"tier\": \"pro\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/keys",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "keys"]
+            },
+            "description": "Register a Pro-tier API key ($9/mo — 1,000 requests/day, registry verification enabled)."
+          }
+        },
+        {
+          "name": "Create API Key (Business)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"you@example.com\",\n  \"tier\": \"business\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/keys",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "keys"]
+            },
+            "description": "Register a Business-tier API key ($29/mo — 3,000 requests/day)."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Validate",
+      "item": [
+        {
+          "name": "Validate EIN (US)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{apiKey}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"12-3456789\",\n  \"country\": \"US\",\n  \"type\": \"EIN\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/validate",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "validate"]
+            },
+            "description": "Synchronous format-only validation. Returns instantly with `valid`, `fraud_risk_score`, and normalized format. Available on all tiers."
+          }
+        },
+        {
+          "name": "Validate VAT (DE)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{apiKey}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"DE123456789\",\n  \"country\": \"DE\",\n  \"type\": \"VAT\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/validate",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "validate"]
+            },
+            "description": "Validate a German VAT number format."
+          }
+        },
+        {
+          "name": "Validate ABN (AU)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{apiKey}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"51 824 753 556\",\n  \"country\": \"AU\",\n  \"type\": \"ABN\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/validate",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "validate"]
+            },
+            "description": "Validate an Australian Business Number (includes checksum verification)."
+          }
+        },
+        {
+          "name": "Validate GSTIN (IN)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{apiKey}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"27AAPFU0939F1ZV\",\n  \"country\": \"IN\",\n  \"type\": \"GSTIN\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/validate",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "validate"]
+            },
+            "description": "Validate an Indian GST Identification Number (state code + PAN format)."
+          }
+        },
+        {
+          "name": "Validate GST (CA)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{apiKey}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"123456789RT0001\",\n  \"country\": \"CA\",\n  \"type\": \"GST\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/validate",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "validate"]
+            },
+            "description": "Validate a Canadian Business Number (BN) with optional RT account identifier."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Verify (Pro+)",
+      "item": [
+        {
+          "name": "Start Registry Verification",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{apiKey}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"12-3456789\",\n  \"country\": \"US\",\n  \"type\": \"EIN\",\n  \"webhook_url\": \"https://your-app.example.com/webhooks/taxid\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/verify",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "verify"]
+            },
+            "description": "**Pro+ only.** Kicks off an async registry lookup. Returns a `job_id` immediately; the webhook receives the enriched result when complete.\n\nFree-tier keys receive 403 with `upgrade_url`."
+          }
+        },
+        {
+          "name": "Get Verification Job",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{apiKey}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/verify/:job_id",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "verify", ":job_id"],
+              "variable": [{ "key": "job_id", "value": "replace-with-job-id" }]
+            },
+            "description": "Poll the status of a verification job. Returns full enrichment (business name, address, registration date) when `status` is `complete`."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Batch (Pro+)",
+      "item": [
+        {
+          "name": "Submit Batch",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{apiKey}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    { \"ref\": \"customer-1\", \"id\": \"12-3456789\", \"country\": \"US\", \"type\": \"EIN\" },\n    { \"ref\": \"customer-2\", \"id\": \"DE123456789\", \"country\": \"DE\", \"type\": \"VAT\" },\n    { \"ref\": \"customer-3\", \"id\": \"51824753556\", \"country\": \"AU\", \"type\": \"ABN\" }\n  ],\n  \"webhook_url\": \"https://your-app.example.com/webhooks/batch\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/batch",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "batch"]
+            },
+            "description": "**Pro+ only.** Submit up to 100 tax IDs for async verification. Returns `batch_id` immediately.\n\nFree-tier keys receive 403 with `upgrade_url`."
+          }
+        },
+        {
+          "name": "Get Batch Results",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{apiKey}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/batch/:batch_id",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "batch", ":batch_id"],
+              "variable": [{ "key": "batch_id", "value": "replace-with-batch-id" }]
+            },
+            "description": "Fetch the batch with all item results. `status` will be `processing` until all items complete."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Usage",
+      "item": [
+        {
+          "name": "Get Usage",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{apiKey}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/usage",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "usage"]
+            },
+            "description": "Returns today's request count, daily limit, and reset time for the authenticated API key."
+          }
+        },
+        {
+          "name": "Set Usage Alert Threshold",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{apiKey}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"threshold_pct\": 80,\n  \"webhook_url\": \"https://your-app.example.com/webhooks/usage-alert\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/usage/alert",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "usage", "alert"]
+            },
+            "description": "Configure a webhook alert when daily usage crosses `threshold_pct` percent of the daily limit."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Checkout",
+      "item": [
+        {
+          "name": "Create Checkout Session",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{apiKey}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tier\": \"pro\",\n  \"success_url\": \"https://your-app.example.com/upgrade/success\",\n  \"cancel_url\": \"https://your-app.example.com/upgrade/cancel\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/checkout",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "checkout"]
+            },
+            "description": "Initiate a Stripe Checkout session to upgrade the current key's tier. Returns a `checkout_url` to redirect the user to. Supported tiers: `pro`, `business`, `enterprise`."
+          }
+        }
+      ]
+    }
+  ]
+}
