@@ -17,7 +17,7 @@ Built with **Hono + TypeScript + SQLite** for a tiny, fast, production-ready foo
 
 ## Who This Is For
 
-TaxIDVerify is purpose-built for:
+Built for **fintech KYB teams**, **EU VAT compliance officers**, and **marketplace seller verification teams**.
 
 - **Fintech KYB platforms** — automate business identity verification during onboarding
 - **EU VAT compliance tools** — validate and enrich EU VAT numbers against VIES in real time
@@ -182,8 +182,52 @@ See [`docs/api-reference.md`](docs/api-reference.md) for full endpoint documenta
 | `POST` | `/v1/batch/csv` | ✓ | Business+ |
 | `POST` | `/v1/checkout` | ✓ | — |
 | `GET` | `/v1/usage` | ✓ | all |
+| `GET` | `/v1/usage/overage` | ✓ | all |
 | `POST` | `/v1/usage/alert` | ✓ | all |
 | `GET` | `/health` | — | — |
+| `GET` | `/metrics` | `X-Metrics-Api-Key` | ops |
+
+### /v1/usage/overage
+
+Returns the current overage balance for the authenticated key.
+
+```bash
+curl http://localhost:3000/v1/usage/overage \
+  -H "Authorization: Bearer <api_key>"
+```
+
+```json
+{
+  "overage_calls": 42,
+  "overage_cost_usd": "0.84",
+  "per_call_rate_usd": "0.02"
+}
+```
+
+### /metrics
+
+Prometheus-compatible metrics endpoint for ops/monitoring. Requires the `X-Metrics-Api-Key` header matching the `METRICS_API_KEY` environment variable. Returns `503` if the variable is not set.
+
+```bash
+curl http://localhost:3000/metrics \
+  -H "X-Metrics-Api-Key: <metrics_secret>"
+```
+
+```
+# HELP requests_total Total HTTP requests handled
+# TYPE requests_total counter
+requests_total{status="200"} 1024
+
+# HELP latency_seconds Average request latency in seconds
+# TYPE latency_seconds gauge
+latency_seconds 0.043200
+
+# HELP quota_usage_calls Daily quota consumption across all API keys
+# TYPE quota_usage_calls gauge
+quota_usage_calls{type="used"} 3100
+quota_usage_calls{type="limit"} 57000
+quota_usage_calls{type="overage"} 42
+```
 
 ## Webhook Signatures
 
@@ -213,6 +257,32 @@ Real official-registry integrations are planned for Q3 2026:
 - **IRS TIN Matching** (US EIN) — batch TIN matching via IRS e-Services
 - **ABR ABN Lookup** (AU) — Australian Business Register open API
 - **GSTIN Verification** (IN) — GST Common Portal public API
+
+## Deployment
+
+### Railway
+
+1. Push this repo to GitHub and create a new Railway project linked to it.
+
+2. Railway auto-detects `railway.json` — the build and start commands are pre-configured:
+   - **Build:** `npm ci && npm run build`
+   - **Start:** `node dist/index.js`
+   - **Health check:** `GET /health`
+
+3. Set the required environment variables in the Railway dashboard (Variables tab):
+
+   ```
+   DATABASE_PATH=/app/data/taxidverify.db
+   STRIPE_SECRET_KEY=sk_live_...
+   STRIPE_WEBHOOK_SECRET=whsec_...
+   METRICS_API_KEY=<random secret>
+   ```
+
+4. Add a Railway volume mounted at `/app/data` to persist the SQLite database across deploys.
+
+5. Deploy — Railway streams build logs and performs the health check before routing traffic.
+
+**Stripe webhook:** After deploy, add your Railway public URL as a Stripe webhook endpoint (`https://<your-app>.railway.app/v1/webhooks/stripe`) and copy the signing secret into `STRIPE_WEBHOOK_SECRET`.
 
 ## Docker
 
@@ -255,6 +325,12 @@ Copy `.env.example` to `.env` and fill in your values.
 | `VIES_ENABLED` | `true` | Set `false` to skip real VIES SOAP calls and use simulation |
 | `REGISTRY_MIN_DELAY` | `100` | Simulated registry min latency ms (ignored when VIES active) |
 | `REGISTRY_MAX_DELAY` | `900` | Simulated registry max latency ms (ignored when VIES active) |
+
+### Monitoring
+
+| Variable | Default | Description |
+|---|---|---|
+| `METRICS_API_KEY` | — | Secret key required in `X-Metrics-Api-Key` header to access `GET /metrics`. If unset, the endpoint returns `503`. |
 
 ## Development
 
